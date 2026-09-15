@@ -1,0 +1,10 @@
+{
+  // Cloudflare Workers + Static Assets (recomendado para sitios nuevos, no Pages).
+  // Sirve el build de Vite; SPA fallback para navegaciones sin match.
+  "name": "termuxtienda",
+  "compatibility_date": "2026-09-15",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
