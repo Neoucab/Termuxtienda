@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { HashRouter, Route, Routes } from "react-router-dom";
 import { useApp } from "./lib/store";
 import { applyTheme } from "./lib/theme";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import AppShell from "./components/layout/AppShell";
 import LockScreen from "./components/LockScreen";
 import Dashboard from "./pages/Dashboard";
@@ -15,6 +16,14 @@ import Reportes from "./pages/Reportes";
 import Ajustes from "./pages/Ajustes";
 
 export default function App() {
+  return (
+    <ErrorBoundary>
+      <AppContent />
+    </ErrorBoundary>
+  );
+}
+
+function AppContent() {
   const themeColor = useApp((s) => s.settings.themeColor);
   const darkMode = useApp((s) => s.settings.darkMode);
   const pinHash = useApp((s) => s.settings.pinHash);
