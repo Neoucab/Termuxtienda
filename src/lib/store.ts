@@ -88,6 +88,24 @@ const initialState = {
   settings: DEFAULT_SETTINGS,
 };
 
+/**
+ * Comprueba que `localStorage` sea legible y escribible (modo privado, permisos
+ * restringidos, cuota agotada). Si no se puede usar, la app falla cerrado.
+ */
+export function isStorageAvailable(): boolean {
+  try {
+    const storage = globalThis.localStorage;
+    if (!storage) return false;
+    const probe = "termuxtienda-storage-probe";
+    storage.setItem(probe, "1");
+    const ok = storage.getItem(probe) === "1";
+    storage.removeItem(probe);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 /** Migra estados persistidos de versiones anteriores al esquema actual (v2). */
 export function migrateState(persisted: unknown, _version: number): PersistedData {
   const s = (persisted ?? {}) as Partial<PersistedData>;
@@ -294,6 +312,10 @@ export const useApp = create<AppState>()(
           const themeColor = validColors.includes(String(rawSettings.themeColor))
             ? (rawSettings.themeColor as Settings["themeColor"])
             : DEFAULT_SETTINGS.themeColor;
+          // Un respaldo nunca instala ni reemplaza la credencial del PIN: se
+          // descarta la importada y se conserva la del propio dispositivo.
+          const { pinHash: _importedCredential, ...importedSettings } = rawSettings;
+          const localPinHash = get().settings.pinHash;
 
           set({
             products: data.products as Product[],
@@ -303,7 +325,12 @@ export const useApp = create<AppState>()(
             purchases: isArr(data.purchases) ? (data.purchases as Purchase[]) : [],
             returns: isArr(data.returns) ? (data.returns as ReturnRecord[]) : [],
             cajaCierres: isArr(data.cajaCierres) ? (data.cajaCierres as CajaCierre[]) : [],
-            settings: { ...DEFAULT_SETTINGS, ...rawSettings, themeColor },
+            settings: {
+              ...DEFAULT_SETTINGS,
+              ...importedSettings,
+              themeColor,
+              ...(localPinHash === undefined ? {} : { pinHash: localPinHash }),
+            },
           });
           return true;
         } catch {

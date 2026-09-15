@@ -133,7 +133,11 @@ export interface Settings {
   currency: string;
   /** Tasa BCV actual: bolívares por 1 dólar. */
   bcvRate?: number;
-  /** PIN de acceso (hash, nunca en texto plano). */
+  /**
+   * Credencial del PIN de acceso, derivada y autocontenida
+   * (`pbkdf2$<iteraciones>$<sal-base64>$<hash-base64>`). El PIN nunca se guarda
+   * en claro y esta credencial no se incluye en los respaldos exportados.
+   */
   pinHash?: string;
   themeColor: ThemeColor;
   darkMode: boolean;

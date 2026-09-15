@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { HashRouter, Route, Routes } from "react-router-dom";
-import { useApp } from "./lib/store";
+import { useApp, isStorageAvailable } from "./lib/store";
 import { applyTheme } from "./lib/theme";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import AppShell from "./components/layout/AppShell";
@@ -27,25 +27,22 @@ function AppContent() {
   const themeColor = useApp((s) => s.settings.themeColor);
   const darkMode = useApp((s) => s.settings.darkMode);
   const pinHash = useApp((s) => s.settings.pinHash);
-  const [unlocked, setUnlocked] = useState(() => {
-    if (typeof sessionStorage === "undefined") return true;
-    return sessionStorage.getItem("termuxtienda-unlocked") === "1";
-  });
+  // El desbloqueo vive solo en memoria: no sobrevive a una recarga ni lo puede
+  // conceder un valor almacenado.
+  const [unlocked, setUnlocked] = useState(false);
+  const [storageOk] = useState(isStorageAvailable);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
     applyTheme(themeColor, darkMode);
   }, [themeColor, darkMode]);
 
-  if (pinHash && !unlocked) {
-    return (
-      <LockScreen
-        onUnlock={() => {
-          sessionStorage.setItem("termuxtienda-unlocked", "1");
-          setUnlocked(true);
-        }}
-      />
-    );
+  const hasCredential = typeof pinHash === "string" && pinHash.length > 0;
+  // Sin almacenamiento no hay credencial verificable: se falla cerrado.
+  const locked = !storageOk || (hasCredential && !unlocked);
+
+  if (locked) {
+    return <LockScreen storageBlocked={!storageOk} onUnlock={() => setUnlocked(true)} />;
   }
 
   return (

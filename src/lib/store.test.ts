@@ -1,7 +1,7 @@
 import "../test/setup";
 import { beforeEach, describe, expect, it } from "vitest";
 import { clientBalance } from "./selectors";
-import { migrateState, useApp } from "./store";
+import { DEFAULT_SETTINGS, isStorageAvailable, migrateState, useApp } from "./store";
 import type { Client, Product } from "./types";
 
 function product(over: Partial<Product> = {}): Product {
@@ -216,6 +216,100 @@ describe("importData", () => {
     expect(ok).toBe(true);
     expect(useApp.getState().products).toHaveLength(1);
     expect(useApp.getState().sales).toEqual([]);
+  });
+});
+
+/** Credencial local de ejemplo (formato derivado). */
+const LOCAL_CREDENTIAL = "pbkdf2$1000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+/** Credencial que trae un respaldo ajeno. */
+const IMPORTED_CREDENTIAL = "1pekp8kgg2q";
+
+/** Ejecuta `run` con otro valor de `localStorage`, restaurando el original. */
+function withStorage<T>(value: Storage | undefined, run: () => T): T {
+  const original = globalThis.localStorage;
+  Object.defineProperty(globalThis, "localStorage", {
+    value,
+    writable: true,
+    configurable: true,
+  });
+  try {
+    return run();
+  } finally {
+    Object.defineProperty(globalThis, "localStorage", {
+      value: original,
+      writable: true,
+      configurable: true,
+    });
+  }
+}
+
+/** Almacenamiento que existe pero rechaza cualquier escritura. */
+const blockedStorage = {
+  get length(): number {
+    return 0;
+  },
+  clear: () => {},
+  getItem: () => {
+    throw new Error("almacenamiento bloqueado");
+  },
+  key: () => null,
+  removeItem: () => {},
+  setItem: () => {
+    throw new Error("almacenamiento bloqueado");
+  },
+} as unknown as Storage;
+
+describe("importData y la credencial del PIN", () => {
+  it("conserva la credencial local y descarta la que traiga el respaldo", () => {
+    useApp.setState({ settings: { ...DEFAULT_SETTINGS, pinHash: LOCAL_CREDENTIAL } });
+
+    const ok = useApp
+      .getState()
+      .importData(
+        JSON.stringify({
+          products: [product()],
+          clients: [client()],
+          settings: { storeName: "Importada", bcvRate: 40, pinHash: IMPORTED_CREDENTIAL },
+        })
+      );
+
+    expect(ok).toBe(true);
+    const settings = useApp.getState().settings;
+    expect(settings.pinHash).toBe(LOCAL_CREDENTIAL);
+    expect(settings.storeName).toBe("Importada");
+    expect(settings.bcvRate).toBe(40);
+  });
+
+  it("no instala una credencial desde el respaldo si el dispositivo no tiene ninguna", () => {
+    useApp.setState({ settings: { ...DEFAULT_SETTINGS } });
+
+    const ok = useApp
+      .getState()
+      .importData(
+        JSON.stringify({
+          products: [product()],
+          clients: [client()],
+          settings: { storeName: "Importada", pinHash: IMPORTED_CREDENTIAL },
+        })
+      );
+
+    expect(ok).toBe(true);
+    expect(useApp.getState().settings.pinHash).toBeUndefined();
+    expect(useApp.getState().settings.storeName).toBe("Importada");
+  });
+});
+
+describe("isStorageAvailable", () => {
+  it("devuelve true cuando localStorage responde", () => {
+    expect(isStorageAvailable()).toBe(true);
+  });
+
+  it("devuelve false cuando localStorage rechaza las escrituras", () => {
+    expect(withStorage(blockedStorage, isStorageAvailable)).toBe(false);
+  });
+
+  it("devuelve false cuando no existe localStorage", () => {
+    expect(withStorage(undefined, isStorageAvailable)).toBe(false);
   });
 });
 

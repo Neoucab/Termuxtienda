@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Download, Lock, Moon, Palette, RefreshCw, Save, ShieldCheck, Sparkles, Store, Sun, Trash2, Upload } from "lucide-react";
 import { useApp } from "../lib/store";
 import { fetchBcvRate } from "../lib/bcv";
+import { buildBackupPayload } from "../lib/backup";
 import { hashPin, isValidPin } from "../lib/pin";
 import { THEMES } from "../lib/theme";
 import type { ThemeColor } from "../lib/types";
@@ -70,24 +71,17 @@ export default function Ajustes() {
     }
   };
 
-  const savePin = (pin: string) => {
-    updateSettings({ pinHash: hashPin(pin) });
+  const savePin = async (pin: string) => {
+    // La derivación es asíncrona y puede fallar si la plataforma no ofrece la
+    // primitiva: en ese caso el diálogo muestra el aviso y sigue abierto.
+    const credential = await hashPin(pin);
+    updateSettings({ pinHash: credential });
     setPinOpen(false);
   };
 
   const exportData = () => {
-    const s = useApp.getState();
-    const payload = {
-      products: s.products,
-      clients: s.clients,
-      sales: s.sales,
-      payments: s.payments,
-      purchases: s.purchases,
-      returns: s.returns,
-      cajaCierres: s.cajaCierres,
-      settings: s.settings,
-      exportedAt: new Date().toISOString(),
-    };
+    // El respaldo se construye sin la credencial del PIN (ver `buildBackupPayload`).
+    const payload = buildBackupPayload(useApp.getState());
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -327,12 +321,26 @@ function PinModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onSave: (pin: string) => void;
+  onSave: (pin: string) => Promise<void>;
   title: string;
 }) {
   const [pin, setPin] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const valid = isValidPin(pin) && pin === confirm;
+
+  const submit = async () => {
+    setSaving(true);
+    setSaveError(false);
+    try {
+      await onSave(pin);
+    } catch {
+      setSaveError(true);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <Modal
@@ -342,16 +350,11 @@ function PinModal({
       size="sm"
       footer={
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
             Cancelar
           </Button>
-          <Button
-            disabled={!valid}
-            onClick={() => {
-              onSave(pin);
-            }}
-          >
-            Guardar PIN
+          <Button disabled={!valid || saving} onClick={() => void submit()}>
+            {saving ? "Guardando…" : "Guardar PIN"}
           </Button>
         </div>
       }
@@ -387,6 +390,9 @@ function PinModal({
         )}
         {isValidPin(pin) && confirm.length > 0 && pin !== confirm && (
           <p className="text-sm text-danger">Los PIN no coinciden.</p>
+        )}
+        {saveError && (
+          <p className="text-sm text-danger">No se pudo guardar el PIN en este dispositivo.</p>
         )}
       </div>
     </Modal>
