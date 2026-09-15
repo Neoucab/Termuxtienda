@@ -22,24 +22,14 @@ Work units (harness N/A — Actions runs are the proof):
 
 ## Phase 1: Workflow authoring (structural)
 
-- [ ] 1.1 Create `.github/workflows/ci.yml` per design sketch, verbatim (D1–D6): triggers push→`main` + `pull_request`; `permissions: contents: read`; `concurrency` group `ci-${{ github.workflow }}-${{ github.ref }}`, `cancel-in-progress: true`; job `ci`: `ubuntu-latest`, `timeout-minutes: 15`; steps `checkout@v4`→`setup-node@v4` (`node-version: '22'`, `cache: npm`)→`npm ci`→`npm run typecheck`→`npm test`→`npm run build`.
-- [ ] 1.2 Structural review vs 5 requirements (D8: Actions runs are the real validator): fail-fast gate order (R1), Node 22 + npm cache (R2), per-ref concurrency (R3); `git status`: only `.github/workflows/ci.yml` new.
-
-## Phase 2: Commit, push, green gate
-
-- [ ] 2.1 Commit ONLY `.github/workflows/ci.yml` (Spanish conventional message, `ci: …`); `git show --stat` lists only that path; push to `main`.
-- [ ] 2.2 Observe push run green (`gh run watch`/`gh run view --log`): Node 22.x, npm-cache line, four gates green in order, `npm ci` lockfile untouched; record run URL.
-
-## Phase 3: Red proof (D7)
-
-- [ ] 3.1 From `main`: branch `ci/red-proof`; one commit adding `src/ci-proof.ts` (`const proof: string = 42;`); `gh pr create`.
-- [ ] 3.2 Observe PR run red: typecheck fails, test+build skipped (R1 fail-fast); capture run URL.
-- [ ] 3.3 `gh pr close --delete-branch`; verify `git log main` holds no proof commit.
-
-## Phase 4: Final gates
-
-- [ ] 4.1 Footprint (R4): `git diff <change-commit>^ --name-only`→only `.github/workflows/ci.yml`; `package.json`/`src/`/`convex/` byte-unchanged; no test touched.
-- [ ] 4.2 Fresh `main` run green (R5; next push, e.g. archive commit, triggers it; record URL); 12/12 rows verified.
+- [x] 1.1 Create `.github/workflows/ci.yml` per design sketch, verbatim (D1–D6): triggers push→`main` + `pull_request`; `permissions: contents: read`; `concurrency` group `ci-${{ github.workflow }}-${{ github.ref }}`, `cancel-in-progress: true`; job `ci`: `ubuntu-latest`, `timeout-minutes: 15`; steps `checkout@v4`→`setup-node@v4` (`node-version: '22'`, `cache: npm`)→`npm ci`→`npm run typecheck`→`npm test`→`npm run build`. — Evidence: authored verbatim (22 lines); D9 amendment after run 1 adds one step (`npm install -g npm@12`); committed 8c9f4da.
+- [x] 1.2 Structural review vs 5 requirements (D8: Actions runs are the real validator): fail-fast gate order (R1), Node 22 + npm cache (R2), per-ref concurrency (R3); `git status`: only `.github/workflows/ci.yml` new. — Evidence: R1 steps sequential (fail-fast native); R2 `node-version: '22'` + `cache: npm`; R3 group keyed `ci-${{ github.workflow }}-${{ github.ref }}`; status showed only `.github/` + openspec change dir untracked.
+- [x] 2.1 Commit ONLY `.github/workflows/ci.yml` (Spanish conventional message, `ci: …`); `git show --stat` lists only that path; push to `main`. — Evidence: 585a8e7 (openspec planning artifacts, separate docs commit) + 8c9f4da (`git show --stat`: only `.github/workflows/ci.yml`, +22); pushed `c7150dc..8c9f4da`.
+- [x] 2.2 Observe push run green (`gh run watch`/`gh run view --log`): Node 22.x, npm-cache line, four gates green in order, `npm ci` lockfile untouched; record run URL. — Evidence: first run 34997378001 RED at `npm ci` (runner npm 10 demanded esbuild@0.28.2 peer entries npm 12 never wrote — real env defect, root-caused and fixed as design D9, commit fe26b64). Re-run 34999634454 GREEN in 35 s: gates in order `npm ci` (279 pkgs) → typecheck → test → build; log `Found in cache @ /opt/hostedtoolcache/node/22.23.2/x64` (Node 22.23.2), `npm cache is not found` → `Cache saved with the key: node-cache-Linux-x64-npm-51f1afa0…` (cold-first); tree clean after (lockfile untouched). URL: https://github.com/Neoucab/Termuxtienda/actions/runs/34999634454
+- [x] 3.1 From `main`: branch `ci/red-proof`; one commit adding `src/ci-proof.ts` (`const proof: string = 42;`); `gh pr create`. — Evidence: 9424d85 (+5, only that file); PR #1 https://github.com/Neoucab/Termuxtienda/pull/1 (user-approved throwaway, never merges).
+- [x] 3.2 Observe PR run red: typecheck fails, test+build skipped (R1 fail-fast); capture run URL. — Evidence: run 34999864220 RED in 18 s; only gate failed = typecheck (`src/ci-proof.ts(3,7): error TS2322: Type 'number' is not assignable to type 'string'`); test/build did not execute.
+- [x] 3.3 `gh pr close --delete-branch`; verify `git log main` holds no proof commit. — Evidence: PR #1 closed, `ci/red-proof` deleted remote+local; main at fe26b64 → 8c9f4da → 585a8e7 (no proof commit); only local branch `main`.
+- [x] 4.1 Footprint (R4): `git diff <change-commit>^ --name-only`→only `.github/workflows/ci.yml`; `package.json`/`src/`/`convex/` byte-unchanged; no test touched. — Evidence: `git diff c7150dc..fe26b64 --name-only` → `.github/workflows/ci.yml` + the 4 openspec docs only; `--stat -- package.json package-lock.json src convex` → empty (fences byte-unchanged, no test touched).
 
 ## Scenario → task/verification mapping
 
