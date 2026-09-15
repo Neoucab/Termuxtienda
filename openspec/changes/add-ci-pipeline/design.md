@@ -75,6 +75,16 @@ No local execution of Actions exists and no YAML validator is installed (adding 
 
 Observing runs: `gh run list` / `gh run view --log` if `gh` is available; otherwise the run summary must be captured from the Actions tab before archiving (evidence requirement for verify — same discipline as the reconstructed RED evidence in `harden-pin-lock`, but here the runs themselves are the receipts).
 
+### D9 — npm version pin: npm 12 on the runner (amendment after first run)
+
+**Choice.** A step `npm install -g npm@12` right after `setup-node`, before `npm ci`.
+
+**Evidence.** The first run (34997378001) failed at the `npm ci` gate on the runner's npm 10.9 (bundled with Node 22): `Missing: esbuild@0.28.2 from lock file` plus every `@esbuild/*@0.28.2` platform entry. Mechanism: vitest 4.1.11 nests vite 8.3.0 (dev subtree) declaring `esbuild: ^0.27.0 || ^0.28.0` as a **peerDependency**; npm 10's `ci` auto-resolves that peer to the latest in-range (0.28.2) and demands lockfile entries that npm 12 (local, 12.0.2) never wrote because it dedupes the peer onto the hoisted `node_modules/esbuild@0.27.0` (convex's exact dependency, satisfying the range). Plain `npm ci` with npm 12 passes locally against the committed lockfile, and the full chain is green on the npm 12 tree (typecheck, 94/94, build 55 s).
+
+**Alternatives.** `--omit=peer` / `--legacy-peer-deps` — tested locally: `npm ci --omit=peer` installs 276 packages but drops `react-is`, which reaches this tree only via peer auto-install, breaking `recharts` at import (`App.test.tsx` suite: `Cannot find module 'react-is'`) — rejected. Completing the lockfile with esbuild@0.28.2 entries — rejected: npm 12 refuses to write them (the peer is already satisfied; `npm update esbuild` and full `npm install` re-resolution are no-ops), hand-editing lockfile integrity hashes is fragile, and a `package.json` `overrides` entry violates the R4 fence. Regenerating the lockfile from scratch — tested: npm 12 rewrites it from `node_modules` without the peer resolution (no-op for this failure) and committing that churn breaks R4's no-lockfile-change letter for zero gain.
+
+**Rationale.** Pinning the runner's npm major to the development machine's makes `npm ci` behave identically to the environment where it was proven to pass, keeps `package-lock.json` byte-identical (R4 honored), and floating within the major retains security patches.
+
 ## File Changes
 
 | File | Action | Description |
@@ -104,6 +114,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '22', cache: npm }
+      - run: npm install -g npm@12
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
