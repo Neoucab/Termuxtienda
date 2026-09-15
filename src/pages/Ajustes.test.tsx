@@ -94,3 +94,30 @@ describe("Ajustes · respaldo", () => {
     expect(exported.clients).toEqual([]);
   });
 });
+
+describe("Ajustes · catálogo público", () => {
+  it("muestra el enlace del catálogo apuntando a #/tienda", () => {
+    render(<Ajustes />);
+    const input = screen.getByDisplayValue(/#\/tienda$/) as HTMLInputElement;
+    expect(input.value).toContain(location.origin);
+  });
+
+  it("guarda el WhatsApp del dueño", () => {
+    render(<Ajustes />);
+    fireEvent.change(screen.getByPlaceholderText("Ej. 0414 123 4567"), {
+      target: { value: "04141234567" },
+    });
+    fireEvent.click(screen.getByText("Guardar WhatsApp"));
+    expect(useApp.getState().settings.whatsappNumber).toBe("04141234567");
+  });
+
+  it("genera y regenera la clave del catálogo", () => {
+    render(<Ajustes />);
+    fireEvent.click(screen.getByText("Generar clave"));
+    const primera = useApp.getState().settings.publishSecret;
+    expect(primera).toBeTruthy();
+    fireEvent.click(screen.getByText("Generar clave"));
+    expect(useApp.getState().settings.publishSecret).toBeTruthy();
+    expect(useApp.getState().settings.publishSecret).not.toBe(primera);
+  });
+});

@@ -4,6 +4,8 @@ dist-ssr
 *.local
 .env
 .env.*
+.dev.vars
+.wrangler/
 .DS_Store
 *.log
 *.tsbuildinfo

@@ -139,6 +139,34 @@ export interface Settings {
    * en claro y esta credencial no se incluye en los respaldos exportados.
    */
   pinHash?: string;
+  /** Número de WhatsApp del dueño para recibir los pre-pedidos del catálogo. */
+  whatsappNumber?: string;
+  /** Clave opaca para publicar el catálogo (debe coincidir con PUBLISH_SECRET del Worker). */
+  publishSecret?: string;
+  /** Última vez que se publicó el catálogo (timestamp). */
+  ultimaPublicacion?: number;
   themeColor: ThemeColor;
   darkMode: boolean;
+}
+
+/** Producto tal como viaja al catálogo público: sin costo ni datos del dueño. */
+export interface ProductoPublico {
+  id: ID;
+  name: string;
+  category: string;
+  size?: string;
+  color?: string;
+  price: number;
+  image?: string;
+  stock: number;
+}
+
+/** Instantánea del catálogo publicada al Worker. */
+export interface CatalogoPublico {
+  publishedAt: number;
+  storeName: string;
+  currency: string;
+  bcvRate?: number;
+  whatsappNumber?: string;
+  products: ProductoPublico[];
 }

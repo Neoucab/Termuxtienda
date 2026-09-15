@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { DEFAULT_SETTINGS, useApp } from "./lib/store";
+import type { CatalogoPublico } from "./lib/types";
 
 const flags = vi.hoisted(() => ({ lockThrows: true, routeThrows: true }));
 
@@ -14,6 +15,7 @@ vi.mock("./components/LockScreen", () => ({
       <div>
         <p>bloqueo recuperado</p>
         <button onClick={onUnlock}>desbloquear</button>
+        <a href="#/tienda">ver catálogo</a>
       </div>
     );
   },
@@ -177,6 +179,60 @@ describe("App · compuerta en memoria", () => {
     renderWithoutStorage();
 
     expect(screen.getByText("bloqueo recuperado")).toBeTruthy();
+    expect(screen.queryByText("panel recuperado")).toBeNull();
+  });
+});
+
+const CATALOGO_PUBLICADO: CatalogoPublico = {
+  publishedAt: 1726400000000,
+  storeName: "Mi Tienda",
+  currency: "$",
+  products: [
+    { id: "p1", name: "Jean Azul", category: "Ropa", price: 20, stock: 3 },
+    { id: "p2", name: "Camisa Blanca", category: "Ropa", price: 15, stock: 0 },
+  ],
+};
+
+describe("App · tienda pública del cliente", () => {
+  beforeEach(() => {
+    flags.lockThrows = false;
+    flags.routeThrows = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(CATALOGO_PUBLICADO), { status: 200 }))
+    );
+  });
+
+  it("muestra el catálogo del cliente sin desbloquear el POS cuando hay un PIN", async () => {
+    resetGate(CONFIGURED_CREDENTIAL);
+    window.location.hash = "#/tienda";
+    render(<App />);
+
+    expect(await screen.findByText("Jean Azul")).toBeTruthy();
+    expect(screen.getByText("Camisa Blanca")).toBeTruthy();
+    // El POS sigue bloqueado: la vista cliente no concede acceso al dueño.
+    expect(screen.queryByText("bloqueo recuperado")).toBeNull();
+    expect(screen.queryByText("panel recuperado")).toBeNull();
+  });
+
+  it("muestra el carrito del cliente sin desbloquear el POS", async () => {
+    resetGate(CONFIGURED_CREDENTIAL);
+    window.location.hash = "#/tienda/carrito";
+    render(<App />);
+
+    expect(await screen.findByText("Tu carrito está vacío")).toBeTruthy();
+    expect(screen.queryByText("bloqueo recuperado")).toBeNull();
+    expect(screen.queryByText("panel recuperado")).toBeNull();
+  });
+
+  it("el enlace Ver catálogo de la pantalla de bloqueo navega sin desbloquear", async () => {
+    resetGate(CONFIGURED_CREDENTIAL);
+    render(<App />);
+
+    expect(screen.getByText("bloqueo recuperado")).toBeTruthy();
+    fireEvent.click(screen.getByText("ver catálogo"));
+
+    expect(await screen.findByText("Jean Azul")).toBeTruthy();
     expect(screen.queryByText("panel recuperado")).toBeNull();
   });
 });

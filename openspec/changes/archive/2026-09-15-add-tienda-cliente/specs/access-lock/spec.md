@@ -1,14 +1,13 @@
-# access-lock Specification
+# Delta for access-lock
 
-## Purpose
+The PIN gate narrows to the owner subtree: public client routes render while locked, and the lock screen links to the public catalog. The session-scoped memory-only unlock and fail-closed storage requirements are unchanged.
 
-Gating of owner content by the local access PIN: owner routes (POS, ventas, clientes, inventario, reportes, ajustes) render only after a PIN is verified, the unlocked state lasts only as long as the current page session, and the public client routes (`#/tienda`, `#/tienda/carrito`) render without unlock. This is a casual-access barrier, not protection against a user with developer tools.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Lock-gated startup
 
 The app MUST render owner content only after a successful PIN verification when a PIN credential is configured; when no credential is configured, the app MUST open without asking for one. The gate MUST apply to the owner routes (`/`, `/ventas`, …) only: the client routes `#/tienda` and `#/tienda/carrito` MUST render without unlock even when a PIN is configured, and the lock screen MUST offer a "Ver catálogo" link that opens the public catalog without unlocking the app.
+(Previously: every route was gated behind the PIN and the lock screen offered no catalog link.)
 
 #### Scenario: Configured PIN gates owner content at startup
 
@@ -44,39 +43,3 @@ The app MUST render owner content only after a successful PIN verification when 
 - WHEN the "Ver catálogo" link is activated
 - THEN the storefront renders at #/tienda
 - AND the app remains locked for owner routes
-
-### Requirement: Unlock state does not outlive the page session
-
-An unlocked state MUST NOT survive a reload, MUST NOT be readable or writable from any storage the page can reach, and MUST NOT be granted by pre-existing stored values.
-
-#### Scenario: Reload locks the app again
-
-- GIVEN the user unlocked the app earlier in this session
-- WHEN the page reloads
-- THEN the lock screen is displayed again
-- AND protected content is not rendered before verification
-
-#### Scenario: Pre-seeded stored flags do not unlock
-
-- GIVEN a PIN credential is configured
-- WHEN the page loads with stored values that appear to mark the app as already unlocked
-- THEN the lock screen is still displayed
-- AND protected content is not rendered
-
-### Requirement: Fail closed without storage
-
-When persistent storage is unavailable or unusable, the app MUST NOT render protected content; it MUST present the lock screen instead.
-
-#### Scenario: Unavailable storage shows the lock screen
-
-- GIVEN persistent storage is unavailable or unusable
-- WHEN the app loads
-- THEN the lock screen is displayed
-- AND protected content is not rendered
-
-#### Scenario: A failed verification keeps protected content hidden
-
-- GIVEN the lock screen is displayed
-- WHEN verification does not complete successfully
-- THEN protected content remains hidden
-- AND the lock screen stays available

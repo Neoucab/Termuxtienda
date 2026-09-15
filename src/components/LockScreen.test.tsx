@@ -310,6 +310,20 @@ describe("LockScreen · almacenamiento no disponible", () => {
   });
 });
 
+describe("LockScreen · enlace al catálogo", () => {
+  it("ofrece el catálogo público sin desbloquear el POS", () => {
+    const onUnlock = vi.fn();
+    setCredential(ZERO_CREDENTIAL);
+    render(<LockScreen subtle={realSubtle} onUnlock={onUnlock} />);
+
+    const enlace = screen.getByText("¿Eres cliente? Ver catálogo");
+    expect(enlace.getAttribute("href")).toBe("#/tienda");
+    fireEvent.click(enlace);
+    expect(onUnlock).not.toHaveBeenCalled();
+    expect(screen.queryByPlaceholderText("••••")).toBeTruthy();
+  });
+});
+
 /** Monta el bloqueo y, al desbloquear, revela el contenido protegido. */
 function UnlockHarness({ subtle, onUnlock }: { subtle?: PinSubtle; onUnlock: () => void }) {
   const [locked, setLocked] = useState(true);

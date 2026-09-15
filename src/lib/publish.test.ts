@@ -46,6 +46,12 @@ describe("productCaption", () => {
     expect(msg).not.toContain("Talla");
     expect(msg).not.toContain("Color");
   });
+
+  it("añade el enlace del catálogo solo cuando se indica", () => {
+    const conEnlace = productCaption(product(), "$", "MiTienda", "https://t.app/#/tienda");
+    expect(conEnlace).toContain("🛒 Ver catálogo: https://t.app/#/tienda");
+    expect(productCaption(product(), "$", "MiTienda")).not.toContain("Ver catálogo");
+  });
 });
 
 describe("SOCIAL_LABELS", () => {

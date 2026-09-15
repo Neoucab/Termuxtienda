@@ -1,10 +1,17 @@
 {
   // Cloudflare Workers + Static Assets (recomendado para sitios nuevos, no Pages).
-  // Sirve el build de Vite; SPA fallback para navegaciones sin match.
+  // Sirve el build de Vite; las rutas /api/* las atiende el worker; SPA fallback.
   "name": "termuxtienda",
+  "main": "worker/index.ts",
   "compatibility_date": "2026-09-15",
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"
-  }
+  },
+  "kv_namespaces": [
+    {
+      "binding": "CATALOGO",
+      "id": "8da0e35e739d484c91877a43d8fc1f52"
+    }
+  ]
 }

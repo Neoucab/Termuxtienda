@@ -135,6 +135,12 @@ export default function LockScreen({ onUnlock, storageBlocked = false, subtle }:
           </Button>
         </div>
       </form>
+      <a
+        href="#/tienda"
+        className="mt-4 text-center text-sm text-primary underline-offset-2 hover:underline"
+      >
+        ¿Eres cliente? Ver catálogo
+      </a>
     </div>
   );
 }

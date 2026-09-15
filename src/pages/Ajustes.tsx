@@ -1,10 +1,11 @@
 import { useRef, useState } from "react";
-import { Download, Lock, Moon, Palette, RefreshCw, Save, ShieldCheck, Sparkles, Store, Sun, Trash2, Upload } from "lucide-react";
+import { Copy, Download, Lock, Moon, Palette, RefreshCw, Save, ShieldCheck, ShoppingBag, Sparkles, Store, Sun, Trash2, Upload } from "lucide-react";
 import { useApp } from "../lib/store";
 import { fetchBcvRate } from "../lib/bcv";
 import { buildBackupPayload } from "../lib/backup";
 import { hashPin, isValidPin } from "../lib/pin";
 import { THEMES } from "../lib/theme";
+import { formatDateTime } from "../lib/format";
 import type { ThemeColor } from "../lib/types";
 import { cn } from "../lib/cn";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -43,7 +44,32 @@ export default function Ajustes() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmExample, setConfirmExample] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [whatsappInput, setWhatsappInput] = useState(settings.whatsappNumber ?? "");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const enlaceCatalogo = `${location.origin}${location.pathname}#/tienda`;
+
+  const guardarWhatsapp = () => {
+    updateSettings({ whatsappNumber: whatsappInput.trim() || undefined });
+  };
+
+  const generarClave = () => {
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    const clave = btoa(String.fromCharCode(...bytes))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+    updateSettings({ publishSecret: clave });
+  };
+
+  const copiar = async (texto: string) => {
+    try {
+      await navigator.clipboard.writeText(texto);
+    } catch {
+      /* portapapeles no disponible */
+    }
+  };
 
   const saveStore = () => {
     const parsedRate = parseFloat(bcvRateInput);
@@ -226,6 +252,73 @@ export default function Ajustes() {
               </Button>
             </div>
           )}
+        </Card>
+
+        <Card className="p-5">
+          <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-foreground">
+            <ShoppingBag className="h-4 w-4" /> Catálogo público
+          </h2>
+          <div className="space-y-4">
+            <Field
+              label="WhatsApp del dueño"
+              hint="Los clientes te envían sus pre-pedidos a este número."
+            >
+              <Input
+                value={whatsappInput}
+                onChange={(e) => setWhatsappInput(e.target.value)}
+                placeholder="Ej. 0414 123 4567"
+              />
+            </Field>
+            <Button variant="outline" size="sm" onClick={guardarWhatsapp}>
+              <Save className="h-4 w-4" /> Guardar WhatsApp
+            </Button>
+
+            <div className="border-t border-border pt-4">
+              <Field
+                label="Clave de catálogo"
+                hint="Debe coincidir con la clave del servidor de publicación. No la compartas."
+              >
+                <Input
+                  readOnly
+                  value={settings.publishSecret ?? ""}
+                  placeholder="Sin clave aún — genera una para poder publicar"
+                  onFocus={(e) => e.currentTarget.select()}
+                />
+              </Field>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={generarClave}>
+                  <Sparkles className="h-4 w-4" /> Generar clave
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => settings.publishSecret && void copiar(settings.publishSecret)}
+                  disabled={!settings.publishSecret}
+                >
+                  <Copy className="h-4 w-4" /> Copiar clave
+                </Button>
+              </div>
+            </div>
+
+            <div className="border-t border-border pt-4">
+              <Field
+                label="Enlace de tu catálogo"
+                hint="Pégalo en tus publicaciones de WhatsApp e Instagram para que tus clientes entren."
+              >
+                <Input readOnly value={enlaceCatalogo} onFocus={(e) => e.currentTarget.select()} />
+              </Field>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => void copiar(enlaceCatalogo)}>
+                  <Copy className="h-4 w-4" /> Copiar enlace
+                </Button>
+                <span className="text-xs text-muted">
+                  {settings.ultimaPublicacion
+                    ? `Última publicación: ${formatDateTime(settings.ultimaPublicacion)}`
+                    : "Nunca publicado"}
+                </span>
+              </div>
+            </div>
+          </div>
         </Card>
 
         <Card className="p-5">

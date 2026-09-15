@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState, type ChangeEvent } from "react";
-import { ImageIcon, Pencil, Plus, Search, Share2, Shirt, Trash2 } from "lucide-react";
+import { CloudUpload, ImageIcon, Pencil, Plus, Search, Share2, Shirt, Trash2 } from "lucide-react";
 import { useApp } from "../lib/store";
 import type { Product, SocialNetwork } from "../lib/types";
 import { money } from "../lib/format";
 import { fileToImageDataUrl } from "../lib/image";
+import { buildCatalogo, publishCatalogo } from "../lib/catalogo";
 import { PageHeader } from "../components/ui/PageHeader";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -21,6 +22,7 @@ export default function Inventario() {
   const addProduct = useApp((s) => s.addProduct);
   const updateProduct = useApp((s) => s.updateProduct);
   const deleteProduct = useApp((s) => s.deleteProduct);
+  const updateSettings = useApp((s) => s.updateSettings);
 
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("Todas");
@@ -28,6 +30,34 @@ export default function Inventario() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [toDelete, setToDelete] = useState<Product | null>(null);
   const [publishing, setPublishing] = useState<Product | null>(null);
+  const [publicando, setPublicando] = useState(false);
+  const [mensajePublicacion, setMensajePublicacion] = useState<string | null>(null);
+
+  const publicarCatalogo = async () => {
+    const { publishSecret, whatsappNumber } = useApp.getState().settings;
+    if (!whatsappNumber) {
+      setMensajePublicacion("Configura primero el WhatsApp del dueño en Ajustes.");
+      return;
+    }
+    if (!publishSecret) {
+      setMensajePublicacion("Configura primero la clave del catálogo en Ajustes.");
+      return;
+    }
+    setPublicando(true);
+    setMensajePublicacion(null);
+    try {
+      await publishCatalogo(
+        buildCatalogo(products, useApp.getState().settings, Date.now()),
+        publishSecret
+      );
+      updateSettings({ ultimaPublicacion: Date.now() });
+      setMensajePublicacion("Catálogo publicado ✓ Tus clientes ya pueden verlo.");
+    } catch (e) {
+      setMensajePublicacion(e instanceof Error ? e.message : "No se pudo publicar el catálogo.");
+    } finally {
+      setPublicando(false);
+    }
+  };
 
   const categories = useMemo(
     () => ["Todas", ...Array.from(new Set(products.map((p) => p.category).filter(Boolean))).sort()],
@@ -61,11 +91,25 @@ export default function Inventario() {
         title="Inventario"
         description="Productos, precios y existencias."
         actions={
-          <Button onClick={() => setCreating(true)}>
-            <Plus className="h-4 w-4" /> Nuevo producto
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => void publicarCatalogo()} disabled={publicando}>
+              <CloudUpload className="h-4 w-4" /> {publicando ? "Publicando…" : "Publicar catálogo"}
+            </Button>
+            <Button onClick={() => setCreating(true)}>
+              <Plus className="h-4 w-4" /> Nuevo producto
+            </Button>
+          </div>
         }
       />
+
+      {mensajePublicacion && (
+        <p
+          role="status"
+          className="mb-4 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground"
+        >
+          {mensajePublicacion}
+        </p>
+      )}
 
       <div className="mb-4 flex flex-wrap gap-3">
         <div className="relative max-w-sm flex-1">

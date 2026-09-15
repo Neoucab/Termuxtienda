@@ -28,7 +28,9 @@ export default function PublishModal({
 
   useEffect(() => {
     if (open && product) {
-      setCaption(productCaption(product, currency, storeName));
+      // El enlace del catálogo dirige al cliente a la tienda pública.
+      const catalogUrl = `${location.origin}${location.pathname}#/tienda`;
+      setCaption(productCaption(product, currency, storeName, catalogUrl));
       setCopied(false);
     }
   }, [open, product, currency, storeName]);
